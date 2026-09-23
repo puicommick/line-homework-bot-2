@@ -27,6 +27,10 @@ QUIET_HOURS_START = "22"      # เริ่มงดรบกวน (ชั่�
 QUIET_HOURS_END = "6"         # สิ้นสุดงดรบกวน (ชั่วโมง ICT)
 REMINDER_MAX_AGE_MINUTES = "720"   # จุดเตือนที่เก่ากว่านี้ถือว่าตกรอบ ไม่ส่งย้อนหลัง
 OVERDUE_NOTICE_MINUTES = "60"      # แจ้ง "เลยกำหนด" หลังถึงกำหนดกี่นาที
+SESSION_TTL_HOURS = "12"          # อายุ session ครู
+LOGIN_MAX_ATTEMPTS = "8"          # ผิดกี่ครั้งต่อหน้าต่างเวลาแล้วล็อก
+LOGIN_WINDOW_MINUTES = "15"
+ALLOW_SELF_REGISTER = "true"      # ให้ครูเปิดบัญชีเองด้วยรหัสเชิญได้หรือไม่
 
 [observability]
 enabled = true
