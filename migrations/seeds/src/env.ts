@@ -1,12 +1,10 @@
 export interface Env {
-  DB: D1Database;
-
+ resetTtlMs: intOr(env.RESET_TTL_MINUTES, 20) * 60_000,
+ resetMaxPerHour: intOr(env.RESET_MAX_PER_HOUR, 3),
+ DB: D1Database;
    SESSION_TTL_HOURS: string;
-
    LOGIN_MAX_ATTEMPTS: string;
-
    LOGIN_WINDOW_MINUTES: string;
-
    ALLOW_SELF_REGISTER: string;
   // secrets
   LINE_CHANNEL_SECRET: string;
