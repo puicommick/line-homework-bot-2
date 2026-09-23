@@ -613,3 +613,121 @@ authRoutes.post("/set-active", requireTeacher, requireAdmin, async (c) => {
   }
   return c.json({ ok: true, message: parsed.data.is_active ? "เปิดใช้งานบัญชีแล้ว" : "ปิดใช้งานบัญชีแล้ว" });
 });
+import { requestPasswordReset, checkResetToken, hashResetToken } from "../services/password-reset";
+import { purgeExpiredSessions } from "../lib/session";
+
+// ---------------------------------------------------------------- POST /auth/forgot
+
+const forgotSchema = z.object({ username: z.string().min(1).max(64) });
+
+authRoutes.post("/forgot", async (c) => {
+  const cfg = readConfig(c.env);
+  const now = Date.now();
+  const ipHash = await hashIp(c.env.LINK_CODE_PEPPER, clientIp(c));
+
+  if (await isIpBlocked(c.env.DB, ipHash, now)) {
+    return c.json({ ok: false, error: "พยายามหลายครั้งเกินไป กรุณารอสักครู่" }, 429);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = forgotSchema.safeParse(body);
+  if (!parsed.success) return c.json({ ok: false, error: "กรุณากรอกชื่อผู้ใช้" }, 400);
+
+  const username = normalizeUsername(parsed.data.username);
+  if (!username) {
+    // รูปแบบผิด = หาไม่เจออยู่แล้ว ตอบข้อความกลางเหมือนกันเพื่อไม่ให้ไล่เดา
+    await recordFailedIp(c.env.DB, ipHash, now, cfg.loginMaxAttempts, cfg.loginWindowMs);
+    return c.json({
+      ok: true,
+      message:
+        "หากชื่อผู้ใช้นี้มีอยู่ในระบบและผูกบัญชี LINE ไว้แล้ว ระบบได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่แชท LINE ของท่านแล้ว",
+    });
+  }
+
+  const outcome = await requestPasswordReset(c.env, username, now);
+  await recordFailedIp(c.env.DB, ipHash, now, cfg.loginMaxAttempts * 2, cfg.loginWindowMs);
+  await audit(c.env.DB, null, "forgot_request", outcome.internal, now);
+
+  return c.json({ ok: true, message: outcome.publicMessage });
+});
+
+// ---------------------------------------------------------------- GET /auth/reset-info
+
+authRoutes.get("/reset-info", async (c) => {
+  const token = c.req.query("token") ?? "";
+  const check = await checkResetToken(c.env, token, Date.now());
+  if (!check.ok) return c.json({ ok: false, error: check.error }, 400);
+  // เปิดเผยแค่ชื่อที่แสดง เพื่อให้ครูมั่นใจว่าเป็นบัญชีตัวเอง
+  return c.json({ ok: true, display_name: check.displayName });
+});
+
+// ---------------------------------------------------------------- POST /auth/reset-confirm
+
+const resetConfirmSchema = z.object({
+  token: z.string().min(20).max(256),
+  new_password: z.string().min(8).max(128),
+});
+
+authRoutes.post("/reset-confirm", async (c) => {
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = resetConfirmSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ ok: false, error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" }, 400);
+  }
+
+  const strength = checkPasswordStrength(parsed.data.new_password);
+  if (!strength.ok) return c.json({ ok: false, error: strength.reason }, 400);
+
+  const check = await checkResetToken(c.env, parsed.data.token, now);
+  if (!check.ok || !check.teacherId || !check.resetId) {
+    return c.json({ ok: false, error: check.error ?? "ลิงก์ไม่ถูกต้อง" }, 400);
+  }
+
+  const tokenHash = await hashResetToken(c.env.LINK_CODE_PEPPER, parsed.data.token);
+  const newHash = await hashPassword(parsed.data.new_password);
+
+  // ปิดโทเคนแบบมีเงื่อนไข: ถ้ามีคนกดพร้อมกันสองครั้ง จะมีแค่ครั้งเดียวที่ผ่าน
+  const consumed = await c.env.DB.prepare(
+    `UPDATE password_resets SET used_at = ? WHERE token_hash = ? AND used_at IS NULL`,
+  )
+    .bind(nowIso, tokenHash)
+    .run();
+
+  if (!consumed.meta || consumed.meta.changes === 0) {
+    return c.json({ ok: false, error: "ลิงก์นี้ถูกใช้ไปแล้ว กรุณาขอลิงก์ใหม่" }, 409);
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE teachers
+        SET password_hash = ?, password_updated_at = ?, must_change_password = 0,
+            failed_logins = 0, locked_until = NULL
+      WHERE id = ?`,
+  )
+    .bind(newHash, nowIso, check.teacherId)
+    .run();
+
+  // ตั้งรหัสใหม่ = เตะทุกอุปกรณ์ออกหมด (รวมเครื่องของผู้บุกรุกถ้ามี)
+  await revokeAllSessions(c.env.DB, check.teacherId, now);
+  await c.env.DB.prepare(`DELETE FROM reset_throttle WHERE teacher_id = ?`).bind(check.teacherId).run();
+  await audit(c.env.DB, check.teacherId, "reset_confirm", "ok", now);
+
+  return c.json({ ok: true, message: "ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบอีกครั้ง" });
+});
+
+// ---------------------------------------------------------------- งานทำความสะอาด (เรียกจาก cron)
+
+export async function cleanupAuthTables(db: D1Database, nowMs: number): Promise<void> {
+  const nowIso = new Date(nowMs).toISOString();
+  await purgeExpiredSessions(db, nowMs);
+  await db.prepare(`DELETE FROM password_resets WHERE expires_at < ?`)
+    .bind(new Date(nowMs - 86_400_000).toISOString()).run();
+  await db.prepare(`DELETE FROM teacher_invites WHERE expires_at < ? AND used_at IS NULL`)
+    .bind(nowIso).run();
+  await db.prepare(`DELETE FROM auth_log WHERE created_at < ?`)
+    .bind(new Date(nowMs - 90 * 86_400_000).toISOString()).run();
+  await db.prepare(`DELETE FROM login_throttle WHERE window_start < ?`)
+    .bind(new Date(nowMs - 86_400_000).toISOString()).run();
+}
