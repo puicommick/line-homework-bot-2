@@ -31,6 +31,8 @@ SESSION_TTL_HOURS = "12"          # อายุ session ครู
 LOGIN_MAX_ATTEMPTS = "8"          # ผิดกี่ครั้งต่อหน้าต่างเวลาแล้วล็อก
 LOGIN_WINDOW_MINUTES = "15"
 ALLOW_SELF_REGISTER = "true"      # ให้ครูเปิดบัญชีเองด้วยรหัสเชิญได้หรือไม่
+RESET_TTL_MINUTES = "20"        # อายุลิงก์รีเซ็ต
+RESET_MAX_PER_HOUR = "3"        # ขอรีเซ็ตได้กี่ครั้งต่อชั่วโมงต่อบัญชี
 
 [observability]
 enabled = true
