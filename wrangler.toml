@@ -1,0 +1,38 @@
+name = "line-homework-bot"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+workers_dev = true
+
+# ให้ import ไฟล์ .html เข้ามาเป็นสตริงได้ (Text module rule ของ Wrangler)
+rules = [
+  { type = "Text", globs = ["**/*.html"], fallthrough = false }
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "homework_db"
+# แทนที่ด้วยค่าที่ได้จากคำสั่ง `npm run db:create`
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+# ค่าที่ไม่ลับ แก้ได้ตรงนี้
+LIFF_ID = "REPLACE_WITH_YOUR_LIFF_ID"
+APP_BASE_URL = "https://line-homework-bot.YOUR-SUBDOMAIN.workers.dev"
+SCHOOL_NAME = "โรงเรียนตัวอย่าง"
+QUIET_HOURS_START = "22"      # เริ่มงดรบกวน (ชั่วโมง ICT)
+QUIET_HOURS_END = "6"         # สิ้นสุดงดรบกวน (ชั่วโมง ICT)
+REMINDER_MAX_AGE_MINUTES = "720"   # จุดเตือนที่เก่ากว่านี้ถือว่าตกรอบ ไม่ส่งย้อนหลัง
+OVERDUE_NOTICE_MINUTES = "60"      # แจ้ง "เลยกำหนด" หลังถึงกำหนดกี่นาที
+
+[observability]
+enabled = true
+
+# secrets ที่ต้องตั้งด้วย `wrangler secret put` (ห้ามใส่ในไฟล์นี้):
+#   LINE_CHANNEL_SECRET
+#   LINE_CHANNEL_ACCESS_TOKEN
+#   TEACHER_SETUP_CODE
+#   LINK_CODE_PEPPER
