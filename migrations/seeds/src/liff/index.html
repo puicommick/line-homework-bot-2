@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ระบบจัดการงานนักเรียน</title>
+<style>
+  :root{
+    --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --muted:#64748b;
+    --line:#e2e8f0; --brand:#2563eb; --brand-dark:#1d4ed8;
+    --green:#16a34a; --danger:#dc2626; --amber:#d97706; --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai","Sarabun",sans-serif;
+    background:var(--bg);color:var(--ink);padding-bottom:80px}
+  header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50;
+    padding:12px 16px;display:flex;align-items:center;justify-content:between}
+  header h1{font-size:16px;margin:0;font-weight:700}
+  .nav{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line)}
+  .nav button{border:0;background:#f1f5f9;padding:8px 14px;border-radius:20px;font-size:13px;
+    font-weight:600;color:var(--muted);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .nav button.on{background:var(--brand);color:#fff}
+  .container{padding:16px;max-width:700px;margin:0 auto}
+  .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);border:1px solid var(--line)}
+  h2{font-size:15px;margin:0 0 12px;font-weight:700}
+  label{display:block;font-size:12.5px;font-weight:600;margin:0 0 4px;color:#334155}
+  input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;
+    font-size:14px;font-family:inherit;background:#fff;color:var(--ink);margin-bottom:12px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+  .btn{width:100%;padding:12px;border:0;border-radius:10px;font-size:14px;font-weight:700;
+    font-family:inherit;cursor:pointer;background:var(--brand);color:#fff;transition:opacity .15s}
+  .btn:active{opacity:.8}
+  .btn-secondary{background:#f1f5f9;color:#334155;margin-top:6px}
+  .btn-danger{background:var(--danger);color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .msg{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
+  .msg.show{display:block}
+  .msg.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+  .msg.ok{background:#f0fdf4;color:#14532d;border:1px solid #bbf7d0}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+  th{font-weight:600;color:var(--muted);background:#f8fafc}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+  .badge.ok{background:#f0fdf4;color:var(--green)}
+  .badge.no{background:#fef2f2;color:var(--danger)}
+  .hidden{display:none !important}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">จัดการงานนักเรียน</h1>
+  <button id="logoutBtn" style="border:0;background:#f1f5f9;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">ออก</button>
+</header>
+
+<div class="nav" id="navTabs">
+  <button type="button" data-tab="assign" class="on">สั่งงานใหม่</button>
+  <button type="button" data-tab="grade">กรอกคะแนน</button>
+  <button type="button" data-tab="students">นักเรียน</button>
+  <button type="button" data-tab="settings">ตั้งค่า</button>
+</div>
+
+<div class="container">
+  <div id="msg" class="msg"></div>
+
+  <!-- Tab 1: สั่งงานใหม่ -->
+  <div id="tab-assign" class="tab-pane">
+    <div class="card">
+      <h2>📝 สร้างและมอบหมายงาน</h2>
+      <form id="assignForm">
+        <label for="asCourse">วิชา</label>
+        <select id="asCourse" required></select>
+
+        <label for="asTitle">ชื่องาน</label>
+        <input id="asTitle" type="text" required placeholder="เช่น ใบงานที่ 1 ระบบคอมพิวเตอร์" />
+
+        <label for="asDesc">รายละเอียด / คำชี้แจง (ถ้ามี)</label>
+        <textarea id="asDesc" rows="3" placeholder="ทำในสมุด ถ่ายรูปส่งในระบบ"></textarea>
+
+        <div class="grid2">
+          <div>
+            <label for="asScore">คะแนนเต็ม</label>
+            <input id="asScore" type="number" min="0" max="1000" step="0.5" value="10" required />
+          </div>
+          <div>
+            <label for="asDue">กำหนดส่ง (วันและเวลา)</label>
+            <input id="asDue" type="datetime-local" required />
+          </div>
+        </div>
+
+        <button type="submit" class="btn" id="asBtn">สร้างงานและบันทึก</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tab 2: กรอกคะแนน -->
+  <div id="tab-grade" class="tab-pane hidden">
+    <div class="card">
+      <h2>📊 ตารางกรอกคะแนน</h2>
+      <label for="grCourse">เลือกวิชา</label>
+      <select id="grCourse"></select>
+
+      <label for="grAssignment">เลือกชิ้นงาน</label>
+      <select id="grAssignment"></select>
+
+      <div id="gradeTableWrap" style="overflow-x:auto"></div>
+    </div>
+  </div>
+
+  <!-- Tab 3: นักเรียน & รหัสผูกบัญชี -->
+  <div id="tab-students" class="tab-pane hidden">
+    <div class="card">
+      <h2>👥 รายชื่อนักเรียนและรหัสผูกบัญชี</h2>
+      <label for="stClass">เลือกห้องเรียน</label>
+      <select id="stClass"></select>
+      <div id="studentListWrap"></div>
+    </div>
+  </div>
+
+  <!-- Tab 4: ตั้งค่า -->
+  <div id="tab-settings" class="tab-pane hidden">
+    <div class="card">
+      <h2>⚙️ ตั้งค่าบัญชี</h2>
+      <p id="teacherNameInfo" style="font-size:13px;color:var(--muted);margin-bottom:12px"></p>
+      <button type="button" class="btn btn-secondary" id="linkLineBtn">ผูกบัญชี LINE กับเครื่องนี้</button>
+      <button type="button" class="btn btn-secondary" id="changePwBtn" style="margin-top:10px">เปลี่ยนรหัสผ่าน</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+(function () {
+  "use strict";
+  var TOKEN_KEY = "hw_teacher_token";
+  var token = sessionStorage.getItem(TOKEN_KEY) || "";
+
+  if (!token) { window.location.replace("/login"); return; }
+
+  var el = function (id) { return document.getElementById(id); };
+  var msgBox = el("msg");
+  var coursesData = [];
+  var classesData = [];
+
+  function show(type, text) {
+    msgBox.className = "msg show " + type;
+    msgBox.textContent = text;
+    setTimeout(function () { msgBox.className = "msg"; }, 4000);
+  }
+
+  function api(path, body) {
+    return fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (res) {
+      if (res.status === 401) { sessionStorage.removeItem(TOKEN_KEY); window.location.replace("/login"); }
+      return res.json().catch(function () { return { ok: false }; });
+    });
+  }
+
+  // ---------- แท็บระบบ ----------
+  Array.prototype.forEach.call(document.querySelectorAll("#navTabs button"), function (btn) {
+    btn.addEventListener("click", function () {
+      Array.prototype.forEach.call(document.querySelectorAll("#navTabs button"), function (b) { b.classList.remove("on"); });
+      Array.prototype.forEach.call(document.querySelectorAll(".tab-pane"), function (p) { p.classList.add("hidden"); });
+      btn.classList.add("on");
+      el("tab-" + btn.getAttribute("data-tab")).classList.remove("hidden");
+    });
+  });
+
+  el("logoutBtn").addEventListener("click", function () {
+    api("/auth/logout").finally(function () {
+      sessionStorage.removeItem(TOKEN_KEY);
+      window.location.replace("/login");
+    });
+  });
+
+  // โหลดข้อมูลพื้นฐาน
+  function loadInit() {
+    Promise.all([
+      api("/api/courses"),
+      api("/api/classes"),
+      api("/auth/me")
+    ]).then(function (results) {
+      var cr = results[0], cl = results[1], me = results[2];
+      if (cr.ok) {
+        coursesData = cr.courses || [];
+        populateCourseSelects();
+      }
+      if (cl.ok) {
+        classesData = cl.classes || [];
+        populateClassSelects();
+      }
+      if (me.ok && me.teacher) {
+        el("teacherNameInfo").textContent = "เข้าสู่ระบบในนาม: " + me.teacher.display_name + " (" + me.teacher.role + ")";
+      }
+    });
+  }
+
+  function populateCourseSelects() {
+    var opts = coursesData.map(function (c) {
+      return '<option value="' + c.id + '">' + c.name + ' (ม.' + c.level + '/' + c.room + ')</option>';
+    }).join("");
+    el("asCourse").innerHTML = opts;
+    el("grCourse").innerHTML = '<option value="">-- กรุณาเลือกวิชา --</option>' + opts;
+  }
+
+  function populateClassSelects() {
+    var opts = classesData.map(function (cl) {
+      return '<option value="' + cl.id + '">ม.' + cl.level + '/' + cl.room + '</option>';
+    }).join("");
+    el("stClass").innerHTML = '<option value="">-- กรุณาเลือกห้อง --</option>' + opts;
+    if (classesData.length > 0) loadStudentsForClass(classesData[0].id);
+  }
+
+  // ---------- สั่งงาน ----------
+  // ตั้งค่าเริ่มต้นช่องวันเวลาส่งเป็นพรุ่งนี้ 16:00
+  var tomorrow = new Date(Date.now() + 86400000);
+  tomorrow.setHours(16, 0, 0, 0);
+  el("asDue").value = tomorrow.toISOString().slice(0, 16);
+
+  el("assignForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var dueIso = new Date(el("asDue").value).toISOString();
+    var body = {
+      course_id: el("asCourse").value,
+      title: el("asTitle").value.trim(),
+      description: el("asDesc").value.trim(),
+      max_score: Number(el("asScore").value),
+      assigned_at: new Date().toISOString(),
+      due_at: dueIso
+    };
+
+    api("/api/assignments", body).then(function (r) {
+      if (r && r.ok) {
+        show("ok", "สร้างงานสำเร็จแล้ว!");
+        el("asTitle").value = "";
+        el("asDesc").value = "";
+      } else {
+        show("err", (r && r.error) || "สร้างงานไม่สำเร็จ");
+      }
+    });
+  });
+
+  // ---------- กรอกคะแนน ----------
+  var currentAssignments = [];
+  el("grCourse").addEventListener("change", function () {
+    var courseId = el("grCourse").value;
+    if (!courseId) { el("grAssignment").innerHTML = ""; el("gradeTableWrap").innerHTML = ""; return; }
+
+    api("/api/courses/" + courseId + "/submissions").then(function (r) {
+      if (r && r.ok) {
+        currentAssignments = r.assignments || [];
+        window._subData = r;
+        el("grAssignment").innerHTML = '<option value="">-- เลือกชิ้นงาน --</option>' +
+          currentAssignments.map(function (a) { return '<option value="' + a.id + '">' + a.title + '</option>'; }).join("");
+        el("gradeTableWrap").innerHTML = "";
+      }
+    });
+  });
+
+  el("grAssignment").addEventListener("change", function () {
+    var aid = el("grAssignment").value;
+    if (!aid || !window._subData) return;
+    var d = window._subData;
+    var assignment = currentAssignments.find(function (x) { return x.id === aid; });
+    var subsMap = {};
+    (d.submissions || []).forEach(function (s) {
+      if (s.assignment_id === aid) subsMap[s.student_id] = s;
+    });
+
+    var html = '<table><thead><tr><th>เลขที่</th><th>ชื่อ-นามสกุล</th><th>คะแนน (เต็ม ' + (assignment ? assignment.max_score : 10) + ')</th><th>หมายเหตุ</th><th>บันทึก</th></tr></thead><tbody>';
+    (d.students || []).forEach(function (st) {
+      var sub = subsMap[st.id] || {};
+      var sc = sub.score !== null && sub.score !== undefined ? sub.score : "";
+      var nt = sub.note || "";
+      html += '<tr><td>' + (st.no || "-") + '</td><td>' + st.name + '<br><span style="font-size:11px;color:var(--muted)">' + st.student_code + '</span></td>' +
+        '<td><input type="number" step="0.5" min="0" max="' + (assignment ? assignment.max_score : 100) + '" id="sc_' + st.id + '" value="' + sc + '" style="width:80px;margin:0"></td>' +
+        '<td><input type="text" id="nt_' + st.id + '" value="' + nt + '" placeholder="หมายเหตุ" style="width:120px;margin:0"></td>' +
+        '<td><button type="button" class="btn" style="padding:6px 10px;font-size:12px" onclick="saveGrade(\'' + aid + '\',\'' + st.id + '\')">บันทึก</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    el("gradeTableWrap").innerHTML = html;
+  });
+
+  window.saveGrade = function (assignmentId, studentId) {
+    var scoreVal = el("sc_" + studentId).value;
+    var noteVal = el("nt_" + studentId).value;
+    var score = scoreVal === "" ? null : Number(scoreVal);
+
+    api("/api/grade", {
+      assignment_id: assignmentId,
+      student_id: studentId,
+      score: score,
+      note: noteVal
+    }).then(function (r) {
+      if (r && r.ok) {
+        show("ok", "บันทึกคะแนนเรียบร้อย");
+      } else {
+        show("err", (r && r.error) || "บันทึกไม่สำเร็จ");
+      }
+    });
+  };
+
+  // ---------- นักเรียน & รหัสผูกบัญชี ----------
+  el("stClass").addEventListener("change", function () {
+    loadStudentsForClass(el("stClass").value);
+  });
+
+  function loadStudentsForClass(classId) {
+    if (!classId) { el("studentListWrap").innerHTML = ""; return; }
+    api("/api/classes/" + classId + "/students").then(function (r) {
+      if (r && r.ok) {
+        var html = '<table><thead><tr><th>เลขที่</th><th>รหัส</th><th>ชื่อ</th><th>สถานะ LINE</th><th>รหัสผูกบัญชี</th></tr></thead><tbody>';
+        (r.students || []).forEach(function (st) {
+          var linked = st.line_user_id ? '<span class="badge ok">ผูกแล้ว</span>' : '<span class="badge no">ยังไม่ผูก</span>';
+          html += '<tr><td>' + (st.no || "-") + '</td><td>' + st.student_code + '</td><td>' + st.name + '</td><td>' + linked + '</td>' +
+            '<td><button type="button" class="btn" style="padding:4px 8px;font-size:11px" onclick="genLink(\'' + st.id + '\')">สร้างรหัสใหม่</button><span id="lk_' + st.id + '" style="margin-left:6px;font-weight:bold;color:var(--brand)"></span></td></tr>';
+        });
+        html += '</tbody></table>';
+        el("studentListWrap").innerHTML = html;
+      }
+    });
+  }
+
+  window.genLink = function (studentId) {
+    api("/api/students/" + studentId + "/regenerate-link", {}).then(function (r) {
+      if (r && r.ok) {
+        el("lk_" + studentId).textContent = r.link_code;
+        show("ok", "สร้างรหัสผูกบัญชีสำเร็จ (ใช้ได้ 3 วัน)");
+      } else {
+        show("err", (r && r.error) || "สร้างไม่สำเร็จ");
+      }
+    });
+  };
+
+  // ---------- ตั้งค่า ----------
+  el("linkLineBtn").addEventListener("click", function () {
+    if (typeof liff === "undefined" || !liff.isInClient()) {
+      show("err", "กรุณาเปิดหน้านี้จากแอปพลิเคชัน LINE เท่านั้นจึงจะผูกบัญชีได้");
+      return;
+    }
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    var tokenLiff = liff.getAccessToken();
+    api("/auth/link-line", { accessToken: tokenLiff }).then(function (r) {
+      if (r && r.ok) show("ok", r.message);
+      else show("err", r.error || "ผูก LINE ไม่สำเร็จ");
+    });
+  });
+
+  el("changePwBtn").addEventListener("click", function () {
+    var p1 = prompt("กรอกรหัสผ่านปัจจุบัน:");
+    if (!p1) return;
+    var p2 = prompt("กรอกรหัสผ่านใหม่ (อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข):");
+    if (!p2) return;
+    api("/auth/change-password", { current_password: p1, new_password: p2 }).then(function (r) {
+      if (r && r.ok) show("ok", r.message);
+      else show("err", r.error || "เปลี่ยนรหัสผ่านไม่สำเร็จ");
+    });
+  });
+
+  loadInit();
+})();
+</script>
+</body>
+</html>
