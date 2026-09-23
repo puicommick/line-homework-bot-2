@@ -731,3 +731,22 @@ export async function cleanupAuthTables(db: D1Database, nowMs: number): Promise<
   await db.prepare(`DELETE FROM login_throttle WHERE window_start < ?`)
     .bind(new Date(nowMs - 86_400_000).toISOString()).run();
 }
+  // ---------- ลืมรหัสผ่าน ----------
+  el("forgotBtn").addEventListener("click", function () {
+    clearMsg();
+    var user = el("lgUser").value.trim();
+    if (!user) {
+      show("info", "กรุณากรอกชื่อผู้ใช้ในช่องด้านบนก่อน แล้วกดลืมรหัสผ่านอีกครั้ง");
+      el("lgUser").focus();
+      return;
+    }
+    var btn = el("forgotBtn");
+    busy(btn, true, "กำลังส่ง…", "ลืมรหัสผ่าน?");
+    api("/auth/forgot", { username: user }).then(function (r) {
+      busy(btn, false, "", "ลืมรหัสผ่าน?");
+      show("info", (r.data && r.data.message) || "ส่งคำขอแล้ว");
+    }).catch(function () {
+      busy(btn, false, "", "ลืมรหัสผ่าน?");
+      show("err", "ส่งคำขอไม่สำเร็จ กรุณาลองใหม่");
+    });
+  });
