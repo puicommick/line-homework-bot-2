@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>เข้าสู่ระบบครู — ระบบตามงานนักเรียน</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#ffffff; --ink:#0f172a; --muted:#64748b;
+    --line:#e2e8f0; --brand:#2563eb; --brand-dark:#1d4ed8;
+    --green:#06c755; --danger:#dc2626; --ok:#16a34a; --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
+    "Noto Sans Thai","Sarabun",sans-serif;background:linear-gradient(160deg,#1e293b,#0f172a 60%);
+    color:var(--ink);display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .wrap{width:100%;max-width:420px}
+  .brand{text-align:center;color:#fff;margin-bottom:18px}
+  .brand h1{margin:0 0 4px;font-size:21px;font-weight:700}
+  .brand p{margin:0;font-size:13px;color:#94a3b8}
+  .card{background:var(--card);border-radius:var(--radius);padding:22px 20px 24px;
+    box-shadow:0 18px 40px rgba(2,6,23,.45)}
+  .tabs{display:flex;gap:6px;background:#f1f5f9;padding:4px;border-radius:12px;margin-bottom:18px}
+  .tabs button{flex:1;border:0;background:transparent;padding:9px 0;border-radius:9px;
+    font-size:14px;font-weight:600;color:var(--muted);font-family:inherit;cursor:pointer}
+  .tabs button.on{background:#fff;color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;color:#334155}
+  .field{margin-bottom:14px}
+  input{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;
+    font-size:16px;font-family:inherit;background:#fff;color:var(--ink);outline:none}
+  input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .pw{position:relative}
+  .pw button{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;
+    background:transparent;color:var(--muted);font-size:12px;font-family:inherit;
+    padding:6px 8px;cursor:pointer;font-weight:600}
+  .btn{width:100%;padding:13px;border:0;border-radius:11px;font-size:15px;font-weight:700;
+    font-family:inherit;cursor:pointer;transition:opacity .15s}
+  .btn:active{opacity:.8}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-line{background:var(--green);color:#fff;margin-top:10px}
+  .btn-ghost{background:#f1f5f9;color:#334155;margin-top:10px}
+  .msg{padding:11px 13px;border-radius:10px;font-size:13.5px;line-height:1.55;margin-bottom:14px;display:none}
+  .msg.show{display:block}
+  .msg.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+  .msg.ok{background:#f0fdf4;color:#14532d;border:1px solid #bbf7d0}
+  .msg.info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:#94a3b8;font-size:12px}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .foot{text-align:center;margin-top:16px;font-size:12px;color:#64748b}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <h1>ระบบตามงานนักเรียน</h1>
+    <p id="schoolName">กำลังโหลด…</p>
+  </div>
+
+  <div class="card">
+    <div id="msg" class="msg"></div>
+
+    <!-- โหมดอัตโนมัติผ่าน LINE -->
+    <div id="autoBox" class="hidden" style="text-align:center;padding:18px 0">
+      <div class="spinner" style="border-color:rgba(37,99,235,.25);border-top-color:var(--brand)"></div>
+      <span style="color:var(--muted);font-size:14px">กำลังเข้าสู่ระบบด้วยบัญชี LINE…</span>
+    </div>
+
+    <div id="mainBox">
+      <div class="tabs" id="tabs">
+        <button type="button" data-tab="login" class="on">เข้าสู่ระบบ</button>
+        <button type="button" data-tab="register">สร้างบัญชีใหม่</button>
+      </div>
+
+      <!-- ฟอร์มเข้าสู่ระบบ -->
+      <form id="loginForm" autocomplete="on">
+        <div class="field">
+          <label for="lgUser">ชื่อผู้ใช้</label>
+          <input id="lgUser" name="username" type="text" inputmode="latin" autocapitalize="off"
+                 autocomplete="username" placeholder="เช่น kru.somchai" required />
+        </div>
+        <div class="field">
+          <label for="lgPass">รหัสผ่าน</label>
+          <div class="pw">
+            <input id="lgPass" name="password" type="password" autocomplete="current-password" required />
+            <button type="button" data-toggle="lgPass">แสดง</button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="lgBtn">เข้าสู่ระบบ</button>
+        <div id="lineBox" class="hidden">
+          <div class="divider">หรือ</div>
+          <button type="button" class="btn btn-line" id="lineBtn">เข้าสู่ระบบด้วย LINE</button>
+        </div>
+        <p class="hint">ลืมรหัสผ่าน? ติดต่อผู้ดูแลระบบของโรงเรียนเพื่อตั้งรหัสใหม่ให้</p>
+      </form>
+
+      <!-- ฟอร์มสมัคร -->
+      <form id="regForm" class="hidden" autocomplete="on">
+        <div class="field">
+          <label for="rgInvite">รหัสเชิญ</label>
+          <input id="rgInvite" type="text" autocapitalize="characters" autocomplete="off"
+                 placeholder="เช่น ABCDE-FGHJK" required />
+          <p class="hint" id="inviteHint">ขอรหัสเชิญจากผู้ดูแลระบบของโรงเรียน</p>
+        </div>
+        <div class="field">
+          <label for="rgName">ชื่อ-นามสกุล</label>
+          <input id="rgName" type="text" autocomplete="name" placeholder="เช่น สมชาย ใจดี" required />
+        </div>
+        <div class="field">
+          <label for="rgUser">ชื่อผู้ใช้ (ภาษาอังกฤษ 4-32 ตัว)</label>
+          <input id="rgUser" type="text" inputmode="latin" autocapitalize="off"
+                 autocomplete="username" placeholder="kru.somchai" required />
+        </div>
+        <div class="field">
+          <label for="rgPass">รหัสผ่าน</label>
+          <div class="pw">
+            <input id="rgPass" type="password" autocomplete="new-password" required />
+            <button type="button" data-toggle="rgPass">แสดง</button>
+          </div>
+          <p class="hint">อย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข</p>
+        </div>
+        <div class="field">
+          <label for="rgPass2">ยืนยันรหัสผ่าน</label>
+          <input id="rgPass2" type="password" autocomplete="new-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary" id="rgBtn">สร้างบัญชี</button>
+      </form>
+    </div>
+  </div>
+
+  <p class="foot">ข้อมูลนักเรียนได้รับการคุ้มครองตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล</p>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var TOKEN_KEY = "hw_teacher_token";
+  var state = { liffId: "", inLiff: false, liffReady: false };
+
+  var el = function (id) { return document.getElementById(id); };
+  var msgBox = el("msg");
+
+  function show(type, text) {
+    msgBox.className = "msg show " + type;
+    msgBox.textContent = text;
+    msgBox.scrollIntoView({ block: "nearest" });
+  }
+  function clearMsg() { msgBox.className = "msg"; msgBox.textContent = ""; }
+
+  function busy(btn, on, labelOn, labelOff) {
+    btn.disabled = on;
+    btn.innerHTML = on ? '<span class="spinner"></span>' + labelOn : labelOff;
+  }
+
+  function saveToken(token) {
+    try { sessionStorage.setItem(TOKEN_KEY, token); } catch (e) { /* โหมดส่วนตัว */ }
+  }
+
+  function gotoApp() { window.location.replace("/app"); }
+
+  function api(path, body, token) {
+    var headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = "Bearer " + token;
+    return fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: headers,
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (res) {
+      return res.json().catch(function () { return { ok: false, error: "เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง" }; })
+        .then(function (data) { return { status: res.status, data: data }; });
+    });
+  }
+
+  // ---------- แท็บ ----------
+  Array.prototype.forEach.call(document.querySelectorAll("#tabs button"), function (btn) {
+    btn.addEventListener("click", function () {
+      clearMsg();
+      Array.prototype.forEach.call(document.querySelectorAll("#tabs button"), function (b) {
+        b.classList.toggle("on", b === btn);
+      });
+      var isLogin = btn.getAttribute("data-tab") === "login";
+      el("loginForm").classList.toggle("hidden", !isLogin);
+      el("regForm").classList.toggle("hidden", isLogin);
+    });
+  });
+
+  // ---------- ปุ่มแสดง/ซ่อนรหัสผ่าน ----------
+  Array.prototype.forEach.call(document.querySelectorAll("[data-toggle]"), function (btn) {
+    btn.addEventListener("click", function () {
+      var target = el(btn.getAttribute("data-toggle"));
+      var showing = target.type === "text";
+      target.type = showing ? "password" : "text";
+      btn.textContent = showing ? "แสดง" : "ซ่อน";
+    });
+  });
+
+  // ---------- เข้าสู่ระบบด้วยรหัสผ่าน ----------
+  el("loginForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    clearMsg();
+    var btn = el("lgBtn");
+    busy(btn, true, "กำลังตรวจสอบ…", "เข้าสู่ระบบ");
+
+    api("/auth/login", {
+      username: el("lgUser").value,
+      password: el("lgPass").value
+    }).then(function (r) {
+      busy(btn, false, "", "เข้าสู่ระบบ");
+      if (r.data && r.data.ok) {
+        saveToken(r.data.token);
+        if (r.data.teacher && r.data.teacher.must_change_password) {
+          show("info", "กรุณาเปลี่ยนรหัสผ่านในหน้าตั้งค่าหลังเข้าสู่ระบบ");
+          setTimeout(gotoApp, 1200);
+        } else {
+          gotoApp();
+        }
+      } else {
+        show("err", (r.data && r.data.error) || "เข้าสู่ระบบไม่สำเร็จ");
+      }
+    }).catch(function () {
+      busy(btn, false, "", "เข้าสู่ระบบ");
+      show("err", "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่");
+    });
+  });
+
+  // ---------- สมัครบัญชีใหม่ ----------
+  el("regForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    clearMsg();
+    if (el("rgPass").value !== el("rgPass2").value) {
+      show("err", "รหัสผ่านทั้งสองช่องไม่ตรงกัน");
+      return;
+    }
+    var btn = el("rgBtn");
+    busy(btn, true, "กำลังสร้างบัญชี…", "สร้างบัญชี");
+
+    api("/auth/register", {
+      invite_code: el("rgInvite").value.trim().toUpperCase(),
+      display_name: el("rgName").value.trim(),
+      username: el("rgUser").value.trim().toLowerCase(),
+      password: el("rgPass").value
+    }).then(function (r) {
+      busy(btn, false, "", "สร้างบัญชี");
+      if (r.data && r.data.ok) {
+        saveToken(r.data.token);
+        show("ok", "สร้างบัญชีเรียบร้อย กำลังเข้าสู่ระบบ…");
+        setTimeout(gotoApp, 900);
+      } else {
+        show("err", (r.data && r.data.error) || "สร้างบัญชีไม่สำเร็จ");
+      }
+    }).catch(function () {
+      busy(btn, false, "", "สร้างบัญชี");
+      show("err", "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่");
+    });
+  });
+
+  // ---------- LINE ----------
+  function loginWithLine(silent) {
+    if (!state.liffReady) { show("err", "ยังเชื่อมต่อ LINE ไม่สำเร็จ"); return; }
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+
+    var token = liff.getAccessToken();
+    if (!token) { show("err", "อ่านข้อมูลบัญชี LINE ไม่ได้"); return; }
+
+    api("/auth/liff", { accessToken: token }).then(function (r) {
+      el("autoBox").classList.add("hidden");
+      el("mainBox").classList.remove("hidden");
+      if (r.data && r.data.ok) {
+        saveToken(r.data.token);
+        gotoApp();
+      } else if (r.data && r.data.code === "NOT_LINKED") {
+        show("info", r.data.error);
+      } else if (!silent) {
+        show("err", (r.data && r.data.error) || "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ");
+      }
+    }).catch(function () {
+      el("autoBox").classList.add("hidden");
+      el("mainBox").classList.remove("hidden");
+      if (!silent) show("err", "เชื่อมต่อ LINE ไม่สำเร็จ");
+    });
+  }
+
+  el("lineBtn").addEventListener("click", function () { loginWithLine(false); });
+
+  // ---------- เริ่มต้น ----------
+  api("/auth/setup-status").then(function (r) {
+    var d = r.data || {};
+    el("schoolName").textContent = d.school_name || "";
+    state.liffId = d.liff_id || "";
+
+    if (d.needs_setup) {
+      // ยังไม่มีครูในระบบ: บังคับไปหน้าสร้างบัญชีผู้ดูแลคนแรก
+      document.querySelector('#tabs button[data-tab="register"]').click();
+      el("inviteHint").textContent = "ใช้รหัสตั้งต้น (TEACHER_SETUP_CODE) ที่ตั้งไว้ตอนติดตั้งระบบ บัญชีแรกจะเป็นผู้ดูแลระบบ";
+      show("info", "ยังไม่มีบัญชีครูในระบบ กรุณาสร้างบัญชีผู้ดูแลระบบคนแรก");
+    } else if (!d.allow_self_register) {
+      document.querySelector('#tabs button[data-tab="register"]').style.display = "none";
+    }
+
+    if (state.liffId && typeof liff !== "undefined") {
+      liff.init({ liffId: state.liffId }).then(function () {
+        state.liffReady = true;
+        state.inLiff = liff.isInClient();
+        el("lineBox").classList.remove("hidden");
+
+        // อยู่ในแอป LINE และล็อกอินแล้ว -> ลองเข้าอัตโนมัติ
+        if (state.inLiff && liff.isLoggedIn() && !d.needs_setup) {
+          el("mainBox").classList.add("hidden");
+          el("autoBox").classList.remove("hidden");
+          loginWithLine(true);
+        }
+      }).catch(function () {
+        el("lineBox").classList.add("hidden");
+      });
+    }
+  }).catch(function () {
+    show("err", "โหลดข้อมูลระบบไม่สำเร็จ กรุณารีเฟรชหน้า");
+  });
+})();
+</script>
+</body>
+</html>
