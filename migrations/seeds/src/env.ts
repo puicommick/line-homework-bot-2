@@ -1,6 +1,13 @@
 export interface Env {
   DB: D1Database;
 
+   SESSION_TTL_HOURS: string;
+
+   LOGIN_MAX_ATTEMPTS: string;
+
+   LOGIN_WINDOW_MINUTES: string;
+
+   ALLOW_SELF_REGISTER: string;
   // secrets
   LINE_CHANNEL_SECRET: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
@@ -18,6 +25,13 @@ export interface Env {
 }
 
 export interface AppConfig {
+   sessionTtlMs: intOr(env.SESSION_TTL_HOURS, 12) * 3_600_000,
+
+   loginMaxAttempts: intOr(env.LOGIN_MAX_ATTEMPTS, 8),
+
+   loginWindowMs: intOr(env.LOGIN_WINDOW_MINUTES, 15) * 60_000,
+
+   allowSelfRegister: (env.ALLOW_SELF_REGISTER || "true").toLowerCase() === "true",
   quietStartHourIct: number;
   quietEndHourIct: number;
   reminderMaxAgeMs: number;
@@ -42,6 +56,13 @@ export function readConfig(env: Env): AppConfig {
     schoolName: env.SCHOOL_NAME || "โรงเรียน",
     liffId: env.LIFF_ID || "",
     appBaseUrl: (env.APP_BASE_URL || "").replace(/\/+$/, ""),
+       sessionTtlMs: intOr(env.SESSION_TTL_HOURS, 12) * 3_600_000,
+
+       loginMaxAttempts: intOr(env.LOGIN_MAX_ATTEMPTS, 8),
+
+       loginWindowMs: intOr(env.LOGIN_WINDOW_MINUTES, 15) * 60_000,
+
+       allowSelfRegister: (env.ALLOW_SELF_REGISTER || "true").toLowerCase() === "true",
   };
 }
 
