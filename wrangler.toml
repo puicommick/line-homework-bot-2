@@ -1,4 +1,4 @@
-name = "line-homework-bot"
+name = "line-homework-bot-2"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 workers_dev = true 
