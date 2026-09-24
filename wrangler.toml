@@ -1,7 +1,7 @@
 name = "line-homework-bot"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
-workers_dev = true
+workers_dev = true 
 
 # ให้ import ไฟล์ .html เข้ามาเป็นสตริงได้ (Text module rule ของ Wrangler)
 rules = [
