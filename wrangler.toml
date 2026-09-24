@@ -12,7 +12,7 @@ rules = [
 binding = "DB"
 database_name = "homework_db"
 # แทนที่ด้วยค่าที่ได้จากคำสั่ง `npm run db:create`
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "f6828504-4a7b-4ca2-992f-cb5ac811d3a2"
 migrations_dir = "migrations"
 
 [triggers]
