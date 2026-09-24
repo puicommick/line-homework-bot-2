@@ -2,7 +2,7 @@
 name = 'line-homework-bot-2'
 main = "migrations/seeds/src/index.ts"
 compatibility_date = "2024-11-01"
-workers_dev = true 
+workers_dev = true  
 
 # ให้ import ไฟล์ .html เข้ามาเป็นสตริงได้ (Text module rule ของ Wrangler)
 rules = [
