@@ -1,5 +1,4 @@
 export interface Env {
- resetTtlMs: intOr(env.RESET_TTL_MINUTES, 20) * 60_000,
  resetMaxPerHour: intOr(env.RESET_MAX_PER_HOUR, 3),
  DB: D1Database;
    SESSION_TTL_HOURS: string;
@@ -20,6 +19,11 @@ export interface Env {
   QUIET_HOURS_END: string;
   REMINDER_MAX_AGE_MINUTES: string;
   OVERDUE_NOTICE_MINUTES: string;
+}
+export function getConfig(env: Env) {
+  return {
+    resetTtlMs: intOr(env.RESET_TTL_MINUTES, 20) * 60_000,
+  };
 }
 
 export interface AppConfig {
