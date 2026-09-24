@@ -1,6 +1,6 @@
 # wrangler.toml
 name = 'line-homework-bot-2'
-main = "migrations/seeds/src/index.ts"
+main = "src/index.ts"
 compatibility_date = "2024-11-01"
 workers_dev = true  
 
@@ -14,7 +14,7 @@ binding = "DB"
 database_name = "homework_db"
 # แทนที่ด้วยค่าที่ได้จากคำสั่ง `npm run db:create`
 database_id = "f6828504-4a7b-4ca2-992f-cb5ac811d3a2"
-migrations_dir = "migrations/sql"
+migrations_dir = "migrations"
 
 [triggers]
 crons = ["*/5 * * * *"]
