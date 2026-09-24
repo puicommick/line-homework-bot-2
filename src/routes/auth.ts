@@ -749,4 +749,4 @@ export async function cleanupAuthTables(db: D1Database, nowMs: number): Promise<
       busy(btn, false, "", "ลืมรหัสผ่าน?");
       show("err", "ส่งคำขอไม่สำเร็จ กรุณาลองใหม่");
     });
-  });
+  `});
