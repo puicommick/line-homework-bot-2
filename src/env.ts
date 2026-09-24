@@ -20,6 +20,14 @@ export interface Env {
   REMINDER_MAX_AGE_MINUTES: string;
   OVERDUE_NOTICE_MINUTES: string;
 }
+function intOr(v: string | undefined, d: number): number {
+
+  const n = Number(v);
+
+  return Number.isFinite(n) ? n : d;
+
+}
+
 export function getConfig(env: Env) {
   return {
     resetTtlMs: intOr(env.RESET_TTL_MINUTES, 20) * 60_000,
