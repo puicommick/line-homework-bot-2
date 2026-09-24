@@ -38,6 +38,19 @@ RESET_MAX_PER_HOUR = "3"        # ขอรีเซ็ตได้กี่ค�
 [observability]
 enabled = true
 
+# ...
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = false
+head_sampling_rate = 1
+persist = true
+# ...
+
 # secrets ที่ต้องตั้งด้วย `wrangler secret put` (ห้ามใส่ในไฟล์นี้):
 #   LINE_CHANNEL_SECRET
 #   LINE_CHANNEL_ACCESS_TOKEN
