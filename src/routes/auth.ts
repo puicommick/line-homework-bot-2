@@ -732,7 +732,7 @@ export async function cleanupAuthTables(db: D1Database, nowMs: number): Promise<
     .bind(new Date(nowMs - 86_400_000).toISOString()).run();
 }
   // ---------- ลืมรหัสผ่าน ----------
-  `el("forgotBtn").addEventListener("click", function () {
+  el("forgotBtn").addEventListener("click", function () {
     clearMsg();
     var user = el("lgUser").value.trim();
     if (!user) {
@@ -749,4 +749,4 @@ export async function cleanupAuthTables(db: D1Database, nowMs: number): Promise<
       busy(btn, false, "", "ลืมรหัสผ่าน?");
       show("err", "ส่งคำขอไม่สำเร็จ กรุณาลองใหม่");
     });
-  `});
+  });
