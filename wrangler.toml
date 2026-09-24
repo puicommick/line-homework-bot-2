@@ -20,9 +20,9 @@ crons = ["*/5 * * * *"]
 
 [vars]
 # ค่าที่ไม่ลับ แก้ได้ตรงนี้
-LIFF_ID = "REPLACE_WITH_YOUR_LIFF_ID"
+LIFF_ID = "2011719552-KozGlg2U"
 APP_BASE_URL = "https://line-homework-bot.YOUR-SUBDOMAIN.workers.dev"
-SCHOOL_NAME = "โรงเรียนตัวอย่าง"
+SCHOOL_NAME = "โรงเรียนตรังคริสเตียนศึกษา"
 QUIET_HOURS_START = "22"      # เริ่มงดรบกวน (ชั่วโมง ICT)
 QUIET_HOURS_END = "6"         # สิ้นสุดงดรบกวน (ชั่วโมง ICT)
 REMINDER_MAX_AGE_MINUTES = "720"   # จุดเตือนที่เก่ากว่านี้ถือว่าตกรอบ ไม่ส่งย้อนหลัง
