@@ -20,7 +20,7 @@ crons = ["*/5 * * * *"]
 
 [vars]
 # ค่าที่ไม่ลับ แก้ได้ตรงนี้
-LIFF_ID = "2011719552-KozGlg2U"
+LIFF_ID = "2011719923-tegLpi1N"
 APP_BASE_URL = "https://line-homework-bot.YOUR-SUBDOMAIN.workers.dev"
 SCHOOL_NAME = "โรงเรียนตรังคริสเตียนศึกษา"
 QUIET_HOURS_START = "22"      # เริ่มงดรบกวน (ชั่วโมง ICT)
