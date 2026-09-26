@@ -1,139 +1,167 @@
--- ============================================================
--- LINE Homework Bot - schema เริ่มต้น
--- เวลาทุกคอลัมน์ที่ลงท้ายด้วย _at เก็บเป็น UTC ISO-8601
--- รูปแบบ: 2026-09-26T09:00:00.000Z
--- ============================================================
-PRAGMA foreign_keys = ON;
+-- migrations/0001_init.sql
+-- Schema สำหรับระบบทวงการบ้าน LINE Homework Bot
+-- หมายเหตุ: เวลาทั้งหมดเก็บเป็น TEXT รูปแบบ ISO8601 UTC เช่น '2026-01-31T13:00:00Z'
 
--- ---------- ครู ----------
-CREATE TABLE teachers (
-  id            TEXT PRIMARY KEY,
-  line_user_id  TEXT UNIQUE,
-  display_name  TEXT NOT NULL DEFAULT '',
-  role          TEXT NOT NULL DEFAULT 'teacher',   -- 'teacher' | 'admin'
-  is_active     INTEGER NOT NULL DEFAULT 1,
-  created_at    TEXT NOT NULL,
-  CHECK (role IN ('teacher','admin'))
-);
-
--- ---------- ห้องเรียน ----------
-CREATE TABLE classes (
+-- ============ 1) ครู / ผู้ดูแล ============
+CREATE TABLE IF NOT EXISTS teachers (
   id             TEXT PRIMARY KEY,
-  level          INTEGER NOT NULL,                 -- 1..6 = ม.1..ม.6
-  room           INTEGER NOT NULL,                 -- เลขห้อง
-  line_group_id  TEXT,                             -- groupId ของกลุ่ม LINE ห้องนี้
-  created_at     TEXT NOT NULL,
-  UNIQUE (level, room),
-  CHECK (level BETWEEN 1 AND 6),
-  CHECK (room BETWEEN 1 AND 99)
+  email          TEXT NOT NULL UNIQUE,
+  display_name   TEXT NOT NULL,
+  password_hash  TEXT NOT NULL,
+  password_salt  TEXT NOT NULL,
+  role           TEXT NOT NULL DEFAULT 'teacher',   -- 'owner' | 'teacher'
+  line_user_id   TEXT UNIQUE,
+  is_active      INTEGER NOT NULL DEFAULT 1,
+  created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
-CREATE INDEX idx_classes_group ON classes(line_group_id);
 
--- ---------- วิชา (ผูกกับห้อง 1 ห้อง) ----------
-CREATE TABLE courses (
-  id          TEXT PRIMARY KEY,
-  class_id    TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  name        TEXT NOT NULL,
-  code        TEXT NOT NULL DEFAULT '',
-  teacher_id  TEXT REFERENCES teachers(id) ON DELETE SET NULL,
-  created_at  TEXT NOT NULL
+CREATE INDEX IF NOT EXISTS idx_teachers_email   ON teachers(email);
+CREATE INDEX IF NOT EXISTS idx_teachers_line    ON teachers(line_user_id);
+
+-- ============ 2) ห้องเรียน ============
+CREATE TABLE IF NOT EXISTS classes (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  join_code     TEXT NOT NULL UNIQUE,              -- รหัสให้นักเรียนเข้าห้อง
+  teacher_id    TEXT NOT NULL,
+  school_year   TEXT,
+  line_group_id TEXT,
+  is_active     INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_courses_class ON courses(class_id);
-CREATE UNIQUE INDEX uq_courses_class_name ON courses(class_id, name);
 
--- ---------- นักเรียน ----------
-CREATE TABLE students (
+CREATE INDEX IF NOT EXISTS idx_classes_teacher ON classes(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_classes_group   ON classes(line_group_id);
+
+-- ============ 3) นักเรียน ============
+CREATE TABLE IF NOT EXISTS students (
   id                    TEXT PRIMARY KEY,
-  student_code          TEXT NOT NULL UNIQUE,      -- รหัสประจำตัวนักเรียน
-  name                  TEXT NOT NULL,
-  "no"                  INTEGER,                   -- เลขที่ในห้อง
-  class_id              TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  link_code_hash        TEXT,                      -- SHA-256(pepper + student_code + code)
-  link_code_expires_at  TEXT,
-  link_attempts         INTEGER NOT NULL DEFAULT 0,
+  class_id              TEXT,
+  student_code          TEXT,                      -- เลขประจำตัวนักเรียน
+  display_name          TEXT NOT NULL,
+  nickname              TEXT,
   line_user_id          TEXT UNIQUE,
-  linked_at             TEXT,
-  notify_enabled        INTEGER NOT NULL DEFAULT 1,
-  quiet_hours_enabled   INTEGER NOT NULL DEFAULT 1,
-  created_at            TEXT NOT NULL
-);
-CREATE INDEX idx_students_class ON students(class_id, "no");
-CREATE INDEX idx_students_line ON students(line_user_id);
-
--- ---------- งาน ----------
-CREATE TABLE assignments (
-  id              TEXT PRIMARY KEY,
-  course_id       TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  title           TEXT NOT NULL,
-  description     TEXT NOT NULL DEFAULT '',
-  max_score       REAL NOT NULL DEFAULT 10,
-  assigned_at     TEXT NOT NULL,
-  due_at          TEXT NOT NULL,
-  remind_minutes  TEXT NOT NULL DEFAULT '[4320,1440,360,180,60]',  -- JSON array นาทีก่อนกำหนด
-  remind_at       TEXT,                                            -- เตือนเพิ่ม ณ เวลาที่ระบุ
-  notify_overdue  INTEGER NOT NULL DEFAULT 1,                      -- เตือนซ้ำเมื่อเลยกำหนด
-  batch_id        TEXT,                                            -- งานชุดเดียวกันที่สั่งหลายห้องพร้อมกัน
-  created_by      TEXT REFERENCES teachers(id) ON DELETE SET NULL,
-  is_archived     INTEGER NOT NULL DEFAULT 0,
-  created_at      TEXT NOT NULL,
-  updated_at      TEXT NOT NULL,
-  CHECK (max_score >= 0)
-);
-CREATE INDEX idx_assignments_course ON assignments(course_id, due_at);
-CREATE INDEX idx_assignments_due ON assignments(due_at) WHERE is_archived = 0;
-CREATE INDEX idx_assignments_batch ON assignments(batch_id);
-
--- ---------- การส่งงาน / คะแนน ----------
-CREATE TABLE submissions (
-  id                 TEXT PRIMARY KEY,
-  assignment_id      TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-  student_id         TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  submitted_at       TEXT,          -- NULL = ยังไม่ส่ง
-  score              REAL,          -- NULL = ยังไม่ให้คะแนน
-  scored_at          TEXT,
-  score_notified_at  TEXT,          -- เวลาที่แจ้งนักเรียนว่าได้คะแนนแล้ว
-  note               TEXT NOT NULL DEFAULT '',
-  updated_at         TEXT NOT NULL,
-  UNIQUE (assignment_id, student_id)
-);
-CREATE INDEX idx_submissions_student ON submissions(student_id);
-CREATE INDEX idx_submissions_pending_notify
-  ON submissions(scored_at) WHERE score IS NOT NULL AND score_notified_at IS NULL;
-
--- ---------- log การแจ้งเตือน (หัวใจของ idempotency) ----------
-CREATE TABLE reminder_log (
-  assignment_id  TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-  student_id     TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  reminder_key   TEXT NOT NULL,     -- 'before:1440' | 'custom:<iso>' | 'overdue' | 'scored'
-  status         TEXT NOT NULL,     -- 'claimed' | 'sent' | 'skipped' | 'retry' | 'failed'
-  attempts       INTEGER NOT NULL DEFAULT 0,
-  point_at       TEXT,              -- เวลาของจุดเตือนนั้น (UTC ISO) ไว้ตรวจย้อนหลัง
-  created_at     TEXT NOT NULL,
-  sent_at        TEXT,
-  PRIMARY KEY (assignment_id, student_id, reminder_key)
-);
-CREATE INDEX idx_reminder_log_status ON reminder_log(status, created_at);
-
--- ---------- กัน webhook ซ้ำ ----------
-CREATE TABLE line_events (
-  event_id     TEXT PRIMARY KEY,
-  received_at  TEXT NOT NULL
-);
-CREATE INDEX idx_line_events_time ON line_events(received_at);
-
--- ---------- สถานะบทสนทนา (flow ลงทะเบียน) ----------
-CREATE TABLE chat_states (
-  line_user_id  TEXT PRIMARY KEY,
-  state         TEXT NOT NULL,       -- 'idle' | 'await_student_code' | 'await_link_code' | 'await_teacher_code'
-  payload       TEXT NOT NULL DEFAULT '{}',
-  expires_at    TEXT NOT NULL,
-  updated_at    TEXT NOT NULL
+  guardian_line_user_id TEXT,
+  is_active             INTEGER NOT NULL DEFAULT 1,
+  created_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL
 );
 
--- ---------- throttle การพยายามผูกบัญชีรายผู้ใช้ LINE ----------
-CREATE TABLE link_throttle (
-  line_user_id   TEXT PRIMARY KEY,
-  attempts       INTEGER NOT NULL DEFAULT 0,
-  window_start   TEXT NOT NULL,
-  blocked_until  TEXT
+CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
+CREATE INDEX IF NOT EXISTS idx_students_line  ON students(line_user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_students_class_code
+  ON students(class_id, student_code)
+  WHERE student_code IS NOT NULL;
+
+-- ============ 4) การบ้าน ============
+CREATE TABLE IF NOT EXISTS homeworks (
+  id                    TEXT PRIMARY KEY,
+  class_id              TEXT NOT NULL,
+  teacher_id            TEXT NOT NULL,
+  title                 TEXT NOT NULL,
+  description           TEXT,
+  subject               TEXT,
+  due_at                TEXT,                      -- กำหนดส่ง (ISO8601 UTC)
+  remind_before_minutes INTEGER NOT NULL DEFAULT 1440,
+  status                TEXT NOT NULL DEFAULT 'open',  -- 'open' | 'closed' | 'archived'
+  created_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  FOREIGN KEY (class_id)   REFERENCES classes(id)  ON DELETE CASCADE,
+  FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_homeworks_class   ON homeworks(class_id);
+CREATE INDEX IF NOT EXISTS idx_homeworks_due     ON homeworks(due_at);
+CREATE INDEX IF NOT EXISTS idx_homeworks_status  ON homeworks(status, due_at);
+
+-- ============ 5) การส่งงาน ============
+CREATE TABLE IF NOT EXISTS submissions (
+  id           TEXT PRIMARY KEY,
+  homework_id  TEXT NOT NULL,
+  student_id   TEXT NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'pending',    -- 'pending' | 'submitted' | 'late' | 'excused'
+  submitted_at TEXT,
+  checked_by   TEXT,
+  note         TEXT,
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  FOREIGN KEY (homework_id) REFERENCES homeworks(id) ON DELETE CASCADE,
+  FOREIGN KEY (student_id)  REFERENCES students(id)  ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_submissions_hw_student
+  ON submissions(homework_id, student_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_student ON submissions(student_id, status);
+CREATE INDEX IF NOT EXISTS idx_submissions_status  ON submissions(status);
+
+-- ============ 6) เซสชันล็อกอินเว็บ ============
+CREATE TABLE IF NOT EXISTS sessions (
+  id           TEXT PRIMARY KEY,                   -- เก็บเป็น hash ของ session token
+  teacher_id   TEXT NOT NULL,
+  user_agent   TEXT,
+  ip           TEXT,
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  expires_at   TEXT NOT NULL,
+  revoked_at   TEXT,
+  FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_teacher ON sessions(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+-- ============ 7) รหัสผูกบัญชี LINE ============
+CREATE TABLE IF NOT EXISTS link_codes (
+  id           TEXT PRIMARY KEY,
+  code_hash    TEXT NOT NULL UNIQUE,               -- HMAC(code, LINK_CODE_PEPPER)
+  purpose      TEXT NOT NULL DEFAULT 'link',       -- 'link' | 'teacher_setup'
+  role         TEXT NOT NULL DEFAULT 'student',    -- 'teacher' | 'student' | 'guardian'
+  line_user_id TEXT,
+  target_id    TEXT,                               -- teacher_id หรือ student_id (ถ้ารู้แล้ว)
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  expires_at   TEXT NOT NULL,
+  used_at      TEXT,
+  attempts     INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_link_codes_expires ON link_codes(expires_at);
+CREATE INDEX IF NOT EXISTS idx_link_codes_line    ON link_codes(line_user_id);
+
+-- ============ 8) ผู้ใช้ LINE ============
+CREATE TABLE IF NOT EXISTS line_users (
+  line_user_id TEXT PRIMARY KEY,
+  display_name TEXT,
+  picture_url  TEXT,
+  role         TEXT NOT NULL DEFAULT 'guest',      -- 'guest' | 'teacher' | 'student' | 'guardian'
+  teacher_id   TEXT,
+  student_id   TEXT,
+  state        TEXT,                               -- JSON เก็บสถานะบทสนทนา
+  is_blocked   INTEGER NOT NULL DEFAULT 0,
+  followed_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  last_seen_at TEXT,
+  FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL,
+  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_line_users_role    ON line_users(role);
+CREATE INDEX IF NOT EXISTS idx_line_users_student ON line_users(student_id);
+
+-- ============ 9) บันทึกการแจ้งเตือน (กันส่งซ้ำ) ============
+CREATE TABLE IF NOT EXISTS reminders_log (
+  id           TEXT PRIMARY KEY,
+  homework_id  TEXT NOT NULL,
+  student_id   TEXT,
+  line_user_id TEXT,
+  kind         TEXT NOT NULL,                      -- 'before_due' | 'due' | 'overdue' | 'summary'
+  sent_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  status       TEXT NOT NULL DEFAULT 'sent',       -- 'sent' | 'failed' | 'skipped_quiet_hours'
+  error        TEXT,
+  FOREIGN KEY (homework_id) REFERENCES homeworks(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reminders_once
+  ON reminders_log(homework_id, student_id, kind);
+CREATE INDEX IF NOT EXISTS idx_reminders_sent ON reminders_log(sent_at);
